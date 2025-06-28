@@ -4,7 +4,9 @@ import io from 'socket.io-client';
 import Editor from '@monaco-editor/react';
 import myImage from "./image/code-box.png";
 
-const socket = io("https://code-box-backend.onrender.com/");
+const socket = io("https://code-box-backend.onrender.com", {
+  transports: ['websocket'], // Force websocket
+});
 
 const App = () => {
 

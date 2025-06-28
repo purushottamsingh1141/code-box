@@ -1,12 +1,45 @@
-# React + Vite
+# 🧠 Code-Box - Realtime Collaborative Code Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Code-Box is a full-stack real-time collaborative code editor where multiple users can join a room and write code together live. It supports syntax highlighting, language switching, typing indicators, and more.
 
-Currently, two official plugins are available:
+![Code-Box Preview](./preview.png) <!-- (optional: add a preview image of your UI here) -->
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🚀 Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- ✅ Real-time code editing with Socket.IO
+- ✅ Join or leave code rooms instantly
+- ✅ Live typing indicator
+- ✅ Select programming languages (JavaScript, Python, Java, C++)
+- ✅ Copy Room ID to share with others
+- ✅ Fully responsive frontend using React + Vite + Monaco Editor
+- ✅ Backend powered by Express + Socket.IO
+
+---
+
+## 🛠 Tech Stack
+
+**Frontend:**
+- React
+- Vite
+- @monaco-editor/react
+- Socket.IO Client
+
+**Backend:**
+- Node.js
+- Express
+- Socket.IO
+- Deployed on Render (optional)
+
+---
+
+## 📦 Installation (Local Setup)
+
+```bash
+git clone https://github.com/purushottamsingh1141/code-box.git
+cd code-box
+npm install
+npm run build        # builds frontend
+npm run dev          # starts backend server on http://localhost:5000
+

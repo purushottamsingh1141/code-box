@@ -44,7 +44,7 @@ const App = () => {
     });
 
     return () => {
-      socket.off("userjoined");
+      socket.off("userJoined"); // ✅ Correct
       socket.off("codeUpdate");
       socket.off("userTyping");
       socket.off("languageUpdate");

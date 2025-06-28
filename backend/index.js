@@ -2,11 +2,13 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import path from "path";
-import dotenv from "dotenv";
-dotenv.config();
+import { fileURLToPath } from "url"; // ✅ Add this for ES modules
+
+// ✅ Fix __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -17,26 +19,26 @@ const io = new Server(server, {
 
 const rooms = new Map();
 
-io.on("connection", (Socket) => {
-  console.log("User Connected", Socket.id);
+io.on("connection", (socket) => {
+  console.log("User Connected", socket.id);
 
   let currentRoom = null;
   let currentUser = null;
 
-  Socket.on("join", ({ roomId, userName }) => {
+  socket.on("join", ({ roomId, userName }) => {
     if (currentRoom) {
-      Socket.leave(currentRoom);
-      rooms.get(currentRoom).delete(currentUser);
+      socket.leave(currentRoom);
+      rooms.get(currentRoom)?.delete(currentUser);
       io.to(currentRoom).emit(
         "userJoined",
-        Array.from(roomId.get(currentRoom))
+        Array.from(rooms.get(currentRoom) || [])
       );
     }
 
     currentRoom = roomId;
     currentUser = userName;
 
-    Socket.join(roomId);
+    socket.join(roomId);
 
     if (!rooms.has(roomId)) {
       rooms.set(roomId, new Set());
@@ -44,50 +46,55 @@ io.on("connection", (Socket) => {
 
     rooms.get(roomId).add(userName);
 
-    io.to(roomId).emit("userJoined", Array.from(rooms.get(currentRoom)));
+    io.to(roomId).emit("userJoined", Array.from(rooms.get(roomId)));
   });
 
-  Socket.on("codeChange", ({ roomId, code }) => {
-    Socket.to(roomId).emit("codeUpdate", code);
+  socket.on("codeChange", ({ roomId, code }) => {
+    socket.to(roomId).emit("codeUpdate", code);
   });
 
-  Socket.on("leaveRoom", () => {
+  socket.on("leaveRoom", () => {
     if (currentRoom && currentUser) {
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
-
-      Socket.leave(currentRoom);
+      rooms.get(currentRoom)?.delete(currentUser);
+      io.to(currentRoom).emit(
+        "userJoined",
+        Array.from(rooms.get(currentRoom) || [])
+      );
+      socket.leave(currentRoom);
       currentRoom = null;
       currentUser = null;
     }
   });
 
-  Socket.on("typing", ({ roomId, userName }) => {
-    Socket.to(roomId).emit("userTyping", userName);
+  socket.on("typing", ({ roomId, userName }) => {
+    socket.to(roomId).emit("userTyping", userName);
   });
 
-  Socket.on("languageChange", ({ roomId, language }) => {
+  socket.on("languageChange", ({ roomId, language }) => {
     io.to(roomId).emit("languageUpdate", language);
   });
 
-  Socket.on("disconnect", () => {
+  socket.on("disconnect", () => {
     if (currentRoom && currentUser) {
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
+      rooms.get(currentRoom)?.delete(currentUser);
+      io.to(currentRoom).emit(
+        "userJoined",
+        Array.from(rooms.get(currentRoom) || [])
+      );
     }
-    console.log("User Disconnected");
+    console.log("user Disconnected");
   });
 });
 
 const port = process.env.PORT || 5000;
 
-const _dirname = path.resolve();
-app.use(express.static(path.join(_dirname, "/frontend/dist")));
+// ✅ Serve static frontend files
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-app.use((req, res) => {
-  res.sendFile(path.join(_dirname, "frontend", "dist", "index.html"));
+app.get("/*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
 });
 
 server.listen(port, () => {
-  console.log("server is working on port 5000");
+  console.log("server is working on port", port);
 });

@@ -1,0 +1,24 @@
+# Ignore node_modules (auto-installed packages)
+node_modules/
+
+# Ignore environment files (API keys, secrets)
+.env
+
+# Ignore build folders (frontend)
+build/
+dist/
+
+# Ignore system files
+.DS_Store
+
+# Ignore logs
+*.log
+
+# Ignore temporary files
+*.tmp
+
+# Ignore Vercel/Netlify deployment folders (optional)
+.vercel/
+.netlify/
+
+.env

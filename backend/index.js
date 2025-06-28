@@ -1,19 +1,14 @@
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
-import path from "path";
-import { fileURLToPath } from "url"; // ✅ Add this for ES modules
-
-// ✅ Fix __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://code-9cwemfoyu-purushottam-singhs-projects.vercel.app", // ✅ Your live frontend
+    methods: ["GET", "POST"],
   },
 });
 
@@ -87,13 +82,6 @@ io.on("connection", (socket) => {
 });
 
 const port = process.env.PORT || 5000;
-
-// ✅ Serve static frontend files
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-app.get("/*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-});
 
 server.listen(port, () => {
   console.log("server is working on port", port);

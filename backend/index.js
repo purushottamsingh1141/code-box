@@ -1,23 +1,78 @@
+// 📁 server/index.js
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import cors from "cors";
+import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const PORT = process.env.PORT || 5000;
 
-// ✅ Optional: Health check route for sanity check
+app.use(express.json());
+
+// ✅ Updated CORS
+app.use(
+  cors({
+    origin: ["https://code-box-psi.vercel.app"], // 👈 NEW FRONTEND URL
+    methods: ["GET", "POST"],
+  })
+);
+
+// ✅ Health Check
 app.get("/", (req, res) => {
   res.send("CodeBox backend is running 🎉");
 });
 
+// ✅ Language to Judge0 Language ID Map
+const langMap = {
+  cpp: 54,
+  python: 71,
+  javascript: 63,
+  java: 62,
+  c: 50,
+  typescript: 74,
+};
+
+// ✅ Compile Code via Judge0
+app.post("/compile", async (req, res) => {
+  const { code, language } = req.body;
+
+  try {
+    const response = await axios.post(
+      "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+      {
+        source_code: code,
+        language_id: langMap[language.toLowerCase()],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-RapidAPI-Key": process.env.RAPID_API_KEY,
+          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+        },
+      }
+    );
+
+    res.json({
+      output: response.data.stdout || response.data.stderr || "No output.",
+    });
+  } catch (error) {
+    console.error("❌ Compilation Error:", error?.response?.data || error);
+    res.status(500).json({ error: "Compilation failed." });
+  }
+});
+
+// ✅ Socket.IO Setup
 const io = new Server(server, {
   cors: {
-    origin: "https://code-9cwemfoyu-purushottam-singhs-projects.vercel.app", // ✅ Frontend URL on Vercel
+    origin: "https://code-box-psi.vercel.app", // 👈 NEW FRONTEND URL
     methods: ["GET", "POST"],
   },
 });
 
-// ✅ Store active rooms and users
 const rooms = new Map();
 
 io.on("connection", (socket) => {
@@ -57,8 +112,8 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("userTyping", userName);
   });
 
-  socket.on("languageChange", ({ roomId, language }) => {
-    io.to(roomId).emit("languageUpdate", language);
+  socket.on("compileOutput", ({ roomId, output }) => {
+    socket.to(roomId).emit("receiveOutput", output);
   });
 
   socket.on("leaveRoom", () => {
@@ -86,7 +141,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const port = process.env.PORT || 5000;
-server.listen(port, () => {
-  console.log("🚀 CodeBox backend running on port", port);
+// ✅ Start Server
+server.listen(PORT, () => {
+  console.log(`🚀 CodeBox backend running on port ${PORT}`);
 });

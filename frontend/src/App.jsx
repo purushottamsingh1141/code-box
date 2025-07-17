@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import "./App.css";
-import io from 'socket.io-client';
-import Editor from '@monaco-editor/react';
+import io from "socket.io-client";
+import Editor from "@monaco-editor/react";
 import myImage from "./image/code-box.png";
 
 const socket = io("https://code-box-backend.onrender.com", {
-  transports: ['websocket'], // Force websocket
+  transports: ["websocket"],
 });
 
-const App = () => {
+const BACKEND_URL = "https://code-box-backend.onrender.com"; // Backend API URL
 
+const App = () => {
   const [joined, setJoined] = useState(false);
   const [roomId, setRoomId] = useState("");
   const [userName, setUserName] = useState("");
@@ -18,8 +19,9 @@ const App = () => {
   const [copySuccess, setCopySuccess] = useState("");
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState("");
+  const [output, setOutput] = useState("");
+  const [isCompiling, setIsCompiling] = useState(false);
 
-  // ✅ Define joinRoom BEFORE useEffect
   const joinRoom = useCallback(() => {
     if (roomId && userName) {
       socket.emit("join", { roomId, userName });
@@ -28,28 +30,25 @@ const App = () => {
   }, [roomId, userName]);
 
   useEffect(() => {
-    socket.on("userJoined", (users) => {
-      setUsers(users)
-    });
-
-    socket.on("codeUpdate", (newCode) => {
-      setCode(newCode);
-    });
-
+    socket.on("userJoined", (users) => setUsers(users));
+    socket.on("codeUpdate", (newCode) => setCode(newCode));
     socket.on("userTyping", (user) => {
       setTyping(`${user.slice(0, 8)}.... is Typing`);
       setTimeout(() => setTyping(""), 2000);
     });
+    socket.on("languageUpdate", (newLanguage) => setLanguage(newLanguage));
 
-    socket.on("languageUpdate", (newLanguage) => {
-      setLanguage(newLanguage);
+    // ✅ Handle output received from other user
+    socket.on("receiveOutput", (sharedOutput) => {
+      setOutput(sharedOutput);
     });
 
     return () => {
-      socket.off("userJoined"); // ✅ Correct
+      socket.off("userJoined");
       socket.off("codeUpdate");
       socket.off("userTyping");
       socket.off("languageUpdate");
+      socket.off("receiveOutput"); // Clean listener
     };
   }, []);
 
@@ -57,22 +56,16 @@ const App = () => {
     const handleBeforeUnload = () => {
       socket.emit("leaveRoom");
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-    };
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // ✅ Trigger joinRoom on Enter key
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Enter" && !joined && roomId && userName) {
         joinRoom();
       }
     };
-
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [joined, roomId, userName, joinRoom]);
@@ -83,7 +76,8 @@ const App = () => {
     setRoomId("");
     setUserName("");
     setCode("// start code here");
-    setLanguage("");
+    setLanguage("javascript");
+    setOutput("");
   };
 
   const copyRoomId = () => {
@@ -98,17 +92,42 @@ const App = () => {
     socket.emit("typing", { roomId, userName });
   };
 
-  const handleLanguageChange = e => {
+  const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
     socket.emit("languageChange", { roomId, language: newLanguage });
+  };
+
+  // ✅ Modified to emit compileOutput to others
+  const runCode = async () => {
+    setIsCompiling(true);
+    setOutput("Running...");
+    try {
+      const response = await fetch(`${BACKEND_URL}/compile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language }),
+      });
+
+      const result = await response.json();
+      setOutput(result.output);
+
+      // ✅ Broadcast result to others
+      socket.emit("compileOutput", {
+        roomId,
+        output: result.output,
+      });
+    } catch (err) {
+      setOutput("❌ Error compiling code.");
+    } finally {
+      setIsCompiling(false);
+    }
   };
 
   if (!joined) {
     return (
       <div className="join-container">
         <div className="login-container">
-          {/* Logo and Title */}
           <div className="img-logo">
             <img src={myImage} alt="code-box-logo" />
             <div>
@@ -118,7 +137,6 @@ const App = () => {
           <span className="logo-sub">realtime collaborative code editor</span>
           <h1 className="login-heading">Join Code Room</h1>
 
-          {/* Input with Icon */}
           <div className="input-wrapper">
             <span className="input-icon">🔑</span>
             <input
@@ -150,7 +168,9 @@ const App = () => {
       <div className="sidebar">
         <div className="room-info">
           <h2>Code Room: {roomId}</h2>
-          <button onClick={copyRoomId} className="copy-button">Copy ID</button>
+          <button onClick={copyRoomId} className="copy-button">
+            Copy ID
+          </button>
           {copySuccess && <span className="copy-success">{copySuccess}</span>}
         </div>
         <h3>User in Room:</h3>
@@ -161,19 +181,26 @@ const App = () => {
         </ul>
 
         <p className="typing-indicator">{typing}</p>
-        <select className="language-selector" value={language} onChange={handleLanguageChange}>
+
+        <select
+          className="language-selector"
+          value={language}
+          onChange={handleLanguageChange}
+        >
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>
           <option value="java">Java</option>
           <option value="cpp">C++</option>
         </select>
 
-        <button className="leave-btn" onClick={leaveRoom}>Leave Room</button>
+        <button className="leave-btn" onClick={leaveRoom}>
+          Leave Room
+        </button>
       </div>
 
       <div className="editor-wrapper">
         <Editor
-          height={"100%"}
+          height="70%"
           defaultLanguage={language}
           language={language}
           value={code}
@@ -181,9 +208,16 @@ const App = () => {
           theme="hc-black"
           options={{
             minimap: { enabled: false },
-            fontSize: 14
+            fontSize: 14,
           }}
         />
+
+        <div className="compile-controls">
+          <button onClick={runCode} className="run-button" disabled={isCompiling}>
+            {isCompiling ? "Running..." : "Run Code"}
+          </button>
+          <pre className="output-box">{output}</pre>
+        </div>
       </div>
     </div>
   );

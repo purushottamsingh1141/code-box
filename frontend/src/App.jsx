@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import "./App.css";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 import myImage from "./image/code-box.png";
 
-const socket = io("https://code-box-backend.onrender.com", {
+const socket = io("http://localhost:5000", {
   transports: ["websocket"],
 });
 
-const BACKEND_URL = "https://code-box-backend.onrender.com"; // Backend API URL
+const BACKEND_URL = "http://localhost:5000";
 
 const App = () => {
   const [joined, setJoined] = useState(false);
@@ -21,6 +21,27 @@ const App = () => {
   const [typing, setTyping] = useState("");
   const [output, setOutput] = useState("");
   const [isCompiling, setIsCompiling] = useState(false);
+
+  const editorRef = useRef(null);
+
+  // Re-added for avatar color support
+  const userColorsRef = useRef({});
+  const colorPalette = [
+    "#e91e63", "#00bcd4", "#8bc34a", "#ffc107", "#9c27b0",
+    "#ff5722", "#3f51b5", "#4caf50", "#795548", "#607d8b"
+  ];
+
+  const assignUserColor = (user) => {
+    if (!userColorsRef.current[user]) {
+      const usedColors = Object.values(userColorsRef.current);
+      const available = colorPalette.filter(c => !usedColors.includes(c));
+      const color = available.length
+        ? available[0]
+        : colorPalette[Math.floor(Math.random() * colorPalette.length)];
+      userColorsRef.current[user] = color;
+    }
+    return userColorsRef.current[user];
+  };
 
   const joinRoom = useCallback(() => {
     if (roomId && userName) {
@@ -37,10 +58,10 @@ const App = () => {
       setTimeout(() => setTyping(""), 2000);
     });
     socket.on("languageUpdate", (newLanguage) => setLanguage(newLanguage));
+    socket.on("receiveOutput", (sharedOutput) => setOutput(sharedOutput));
 
-    // ✅ Handle output received from other user
-    socket.on("receiveOutput", (sharedOutput) => {
-      setOutput(sharedOutput);
+    socket.on("userJoined", ({ userName }) => {
+      console.log(`${userName} joined`);
     });
 
     return () => {
@@ -48,7 +69,7 @@ const App = () => {
       socket.off("codeUpdate");
       socket.off("userTyping");
       socket.off("languageUpdate");
-      socket.off("receiveOutput"); // Clean listener
+      socket.off("receiveOutput");
     };
   }, []);
 
@@ -98,7 +119,6 @@ const App = () => {
     socket.emit("languageChange", { roomId, language: newLanguage });
   };
 
-  // ✅ Modified to emit compileOutput to others
   const runCode = async () => {
     setIsCompiling(true);
     setOutput("Running...");
@@ -108,15 +128,9 @@ const App = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language }),
       });
-
       const result = await response.json();
       setOutput(result.output);
-
-      // ✅ Broadcast result to others
-      socket.emit("compileOutput", {
-        roomId,
-        output: result.output,
-      });
+      socket.emit("shareOutput", { roomId, output: result.output });
     } catch (err) {
       setOutput("❌ Error compiling code.");
     } finally {
@@ -130,31 +144,19 @@ const App = () => {
         <div className="login-container">
           <div className="img-logo">
             <img src={myImage} alt="code-box-logo" />
-            <div>
-              <p className="logo-title">Codebox</p>
-            </div>
+            <div><p className="logo-title">Codebox</p></div>
           </div>
           <span className="logo-sub">realtime collaborative code editor</span>
           <h1 className="login-heading">Join Code Room</h1>
 
           <div className="input-wrapper">
             <span className="input-icon">🔑</span>
-            <input
-              type="text"
-              placeholder="Room Id"
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-            />
+            <input type="text" placeholder="Room Id" value={roomId} onChange={(e) => setRoomId(e.target.value)} />
           </div>
 
           <div className="input-wrapper">
             <span className="input-icon">👤</span>
-            <input
-              type="text"
-              placeholder="Your Name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
+            <input type="text" placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} />
           </div>
 
           <button onClick={joinRoom}>Join Room</button>
@@ -168,34 +170,34 @@ const App = () => {
       <div className="sidebar">
         <div className="room-info">
           <h2>Code Room: {roomId}</h2>
-          <button onClick={copyRoomId} className="copy-button">
-            Copy ID
-          </button>
+          <button onClick={copyRoomId} className="copy-button">Copy ID</button>
           {copySuccess && <span className="copy-success">{copySuccess}</span>}
         </div>
-        <h3>User in Room:</h3>
-        <ul>
-          {users.map((user, index) => (
-            <li key={index}>{user.slice(0, 8)}....</li>
-          ))}
+
+        <h3>Users in Room:</h3>
+        <ul className="user-list">
+          {users.map((user, index) => {
+            const initials = user.trim().charAt(0).toUpperCase();
+            const color = assignUserColor(user);
+            return (
+              <li key={index} className="user-badge">
+                <span className="avatar-circle" style={{ backgroundColor: color }}>{initials}</span>
+                {user}
+              </li>
+            );
+          })}
         </ul>
 
         <p className="typing-indicator">{typing}</p>
 
-        <select
-          className="language-selector"
-          value={language}
-          onChange={handleLanguageChange}
-        >
+        <select className="language-selector" value={language} onChange={handleLanguageChange}>
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>
           <option value="java">Java</option>
           <option value="cpp">C++</option>
         </select>
 
-        <button className="leave-btn" onClick={leaveRoom}>
-          Leave Room
-        </button>
+        <button className="leave-btn" onClick={leaveRoom}>Leave Room</button>
       </div>
 
       <div className="editor-wrapper">
@@ -205,11 +207,11 @@ const App = () => {
           language={language}
           value={code}
           onChange={handleCodeChange}
-          theme="hc-black"
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
+          onMount={(editor) => {
+            editorRef.current = editor;
           }}
+          theme="hc-black"
+          options={{ minimap: { enabled: false }, fontSize: 14 }}
         />
 
         <div className="compile-controls">

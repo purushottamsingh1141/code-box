@@ -145,15 +145,80 @@ body {
   border-radius: 6px;
 }
 
+.avatar-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.user-list {
+  list-style: none;
+  padding-left: 0;
+}
+/* Generic cursor base style */
+[class^="cursor-"]::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  animation: blink 1s step-start infinite;
+  vertical-align: text-bottom;
+}
+
+/* Unique cursor colors will be applied via inlineClassName dynamically */
+.cursor-example { color: red; } /* Just example */
+
+/* Fallback - not used directly, just to ensure animation is loaded */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+
 .output-box {
+  height: 200px;
+  overflow-y: auto;
   background-color: #1e1e1e;
   color: #dcdcdc;
-  padding: 10px;
+  padding: 8px;
   font-family: monospace;
   white-space: pre-wrap;
   min-height: 100px;
   border-radius: 4px;
   margin-top: 10px;
+  scrollbar-width: none;
+}
+
+.compile-button {
+  background-color: #4caf50;
+  color: white;
+  font-weight: 600;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.compile-button:hover {
+  background-color: #45a049;
 }
 
 

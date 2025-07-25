@@ -13,20 +13,19 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
-// ✅ Updated CORS
 app.use(
   cors({
-    origin: ["https://code-box-psi.vercel.app"], // 👈 NEW FRONTEND URL
+    origin: ["http://localhost:5173"],
     methods: ["GET", "POST"],
   })
 );
 
-// ✅ Health Check
+//  Health Check
 app.get("/", (req, res) => {
   res.send("CodeBox backend is running 🎉");
 });
 
-// ✅ Language to Judge0 Language ID Map
+//  Language to Judge0 Language ID Map
 const langMap = {
   cpp: 54,
   python: 71,
@@ -36,7 +35,7 @@ const langMap = {
   typescript: 74,
 };
 
-// ✅ Compile Code via Judge0
+//  Compile Code via Judge0
 app.post("/compile", async (req, res) => {
   const { code, language } = req.body;
 
@@ -50,7 +49,8 @@ app.post("/compile", async (req, res) => {
       {
         headers: {
           "Content-Type": "application/json",
-          "X-RapidAPI-Key": process.env.RAPID_API_KEY,
+          "X-RapidAPI-Key":
+            "cb33d3105dmshceb7ac904975203p12c386jsn898b35c2630b",
           "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
         },
       }
@@ -65,10 +65,10 @@ app.post("/compile", async (req, res) => {
   }
 });
 
-// ✅ Socket.IO Setup
+//  Socket.IO Setup
 const io = new Server(server, {
   cors: {
-    origin: "https://code-box-psi.vercel.app", // 👈 NEW FRONTEND URL
+    origin: "https://code-9cwemfoyu-purushottam-singhs-projects.vercel.app",
     methods: ["GET", "POST"],
   },
 });
@@ -76,7 +76,7 @@ const io = new Server(server, {
 const rooms = new Map();
 
 io.on("connection", (socket) => {
-  console.log("✅ User Connected:", socket.id);
+  console.log(" User Connected:", socket.id);
 
   let currentRoom = null;
   let currentUser = null;
@@ -105,15 +105,19 @@ io.on("connection", (socket) => {
   });
 
   socket.on("codeChange", ({ roomId, code }) => {
-    socket.to(roomId).emit("codeUpdate", code);
+    io.to(roomId).emit("codeUpdate", code);
   });
 
   socket.on("typing", ({ roomId, userName }) => {
     socket.to(roomId).emit("userTyping", userName);
   });
 
-  socket.on("compileOutput", ({ roomId, output }) => {
-    socket.to(roomId).emit("receiveOutput", output);
+  socket.on("languageChange", ({ roomId, language }) => {
+    io.to(roomId).emit("languageUpdate", language);
+  });
+
+  socket.on("shareOutput", ({ roomId, output }) => {
+    io.to(roomId).emit("receiveOutput", output);
   });
 
   socket.on("leaveRoom", () => {
@@ -141,7 +145,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Start Server
+//  Start Server
 server.listen(PORT, () => {
   console.log(`🚀 CodeBox backend running on port ${PORT}`);
 });

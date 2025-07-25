@@ -15,7 +15,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://code-box-nine.vercel.app"],
     methods: ["GET", "POST"],
   })
 );
@@ -68,7 +68,7 @@ app.post("/compile", async (req, res) => {
 //  Socket.IO Setup
 const io = new Server(server, {
   cors: {
-    origin: "https://code-9cwemfoyu-purushottam-singhs-projects.vercel.app",
+    origin: "https://code-box-nine.vercel.app",
     methods: ["GET", "POST"],
   },
 });

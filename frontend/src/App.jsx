@@ -4,11 +4,11 @@ import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 import myImage from "./image/code-box.png";
 
-const socket = io("http://localhost:5000", {
+const socket = io("https://code-box-backend.onrender.com", {
   transports: ["websocket"],
 });
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = "https://code-box-backend.onrender.com";
 
 const App = () => {
   const [joined, setJoined] = useState(false);

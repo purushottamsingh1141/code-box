@@ -123,7 +123,7 @@ const App = () => {
     setIsCompiling(true);
     setOutput("Running...");
     try {
-      const response = await fetch(`${BACKEND_URL}/compile`, {
+      const response = await fetch(`https://code-box-backend.onrender.com/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language }),
